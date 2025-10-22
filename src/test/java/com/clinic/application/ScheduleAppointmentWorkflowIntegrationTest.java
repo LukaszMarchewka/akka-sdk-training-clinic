@@ -3,6 +3,7 @@ package com.clinic.application;
 import akka.javasdk.testkit.TestKitSupport;
 import com.clinic.domain.Appointment;
 import com.clinic.domain.Schedule;
+import com.clinic.domain.ScheduleAppointmentState;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
 
+import static com.clinic.application.DateUtils.dateTime;
+import static com.clinic.application.DateUtils.time;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +47,10 @@ public class ScheduleAppointmentWorkflowIntegrationTest extends TestKitSupport {
                 .method(ScheduleEntity::getSchedule)
                 .invoke();
         assertEquals(1, updatedSchedule.get().timeSlots().size());
+
+        var workflowState = componentClient.forWorkflow("1").method(ScheduleAppointmentWorkflow::getState).invoke();
+
+        assertEquals(ScheduleAppointmentState.Status.AppointmentScheduled, workflowState.status());
     }
 
     @Test
@@ -57,15 +64,5 @@ public class ScheduleAppointmentWorkflowIntegrationTest extends TestKitSupport {
     @Test
     public void scheduleDoesntExist() {}
 
-    private LocalDate date(String str) {
-        return LocalDate.parse(str);
-    }
 
-    private LocalTime time(String str) {
-        return LocalTime.parse(str);
-    }
-
-    private LocalDateTime dateTime(String str) {
-        return LocalDateTime.parse(str);
-    }
 }

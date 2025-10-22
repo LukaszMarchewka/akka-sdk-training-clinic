@@ -28,7 +28,7 @@ public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentSta
         if (currentState() != null)
             return effects().error("Appointment already exists");
 
-        var state = new ScheduleAppointmentState(cmd.dateTime, cmd.doctorId, cmd.patientId, cmd.issue);
+        var state = new ScheduleAppointmentState(cmd.dateTime, cmd.doctorId, cmd.patientId, cmd.issue, ScheduleAppointmentState.Status.Initial);
         return effects()
                 .updateState(state)
                 .transitionTo(ScheduleAppointmentWorkflow::createAppointment)
@@ -39,6 +39,11 @@ public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentSta
         return effects().reply(currentState());
     }
 
+    public Effect<Boolean> isCompleted() {
+        return effects()
+                .reply(currentState().status() == ScheduleAppointmentState.Status.AppointmentScheduled || currentState().status() == ScheduleAppointmentState.Status.AppointmentCancelled);
+    }
+
     public StepEffect createAppointment() {
         System.out.println("## createAppointment");
         componentClient
@@ -47,6 +52,7 @@ public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentSta
                 .invoke(new AppointmentEntity.CreateAppointmentCmd(currentState().dateTime(), currentState().doctorId(), currentState().patientId(), currentState().issue()));
 
         return stepEffects()
+                .updateState(currentState().withStatus(ScheduleAppointmentState.Status.AppointmentCreated))
                 .thenTransitionTo(ScheduleAppointmentWorkflow::scheduleTimeSlot);
     }
 
@@ -59,10 +65,12 @@ public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentSta
                     .method(ScheduleEntity::scheduleAppointment)
                     .invoke(new ScheduleEntity.ScheduleAppointmentData(currentState().dateTime().toLocalTime(), DEFAULT_DURATION, commandContext().workflowId()));
         } catch (IllegalArgumentException e) {
-            return stepEffects().thenTransitionTo(ScheduleAppointmentWorkflow::cancelAppointment);
+            return stepEffects()
+                    .thenTransitionTo(ScheduleAppointmentWorkflow::cancelAppointment);
         }
 
         return stepEffects()
+                .updateState(currentState().withStatus(ScheduleAppointmentState.Status.TimeSlotScheduled))
                 .thenTransitionTo(ScheduleAppointmentWorkflow::markAppointmentAsScheduled);
     }
 
@@ -73,7 +81,9 @@ public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentSta
                 .method(AppointmentEntity::schedule)
                 .invoke();
 
-        return stepEffects().thenEnd();
+        return stepEffects()
+                .updateState(currentState().withStatus(ScheduleAppointmentState.Status.AppointmentScheduled))
+                .thenEnd();
     }
 
     public StepEffect cancelAppointment() {
