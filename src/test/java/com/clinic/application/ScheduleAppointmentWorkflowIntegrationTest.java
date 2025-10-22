@@ -7,9 +7,6 @@ import com.clinic.domain.ScheduleAppointmentState;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.Optional;
 
 import static com.clinic.application.DateUtils.dateTime;
