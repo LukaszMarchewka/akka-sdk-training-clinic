@@ -118,7 +118,7 @@ public class ScheduleTest {
         assertEquals(houseScheduleId, Schedule.ScheduleId.fromString("house:2021-01-01"));
     }
 
-    private Schedule.TimeSchedule appointment(String startTime, String endTime) {
-        return new Schedule.TimeSchedule(LocalTime.parse(startTime), LocalTime.parse(endTime), "a1");
+    private Schedule.TimeSlot appointment(String startTime, String endTime) {
+        return new Schedule.TimeSlot(LocalTime.parse(startTime), LocalTime.parse(endTime), "a1");
     }
 }

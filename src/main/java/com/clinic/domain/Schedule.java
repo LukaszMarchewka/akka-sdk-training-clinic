@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public record Schedule(ScheduleId id, WorkingHours workingHours, List<TimeSchedule> timeSlots) {
+public record Schedule(ScheduleId id, WorkingHours workingHours, List<TimeSlot> timeSlots) {
 
     private static final Duration MIN_DURATION = Duration.ofMinutes(5);
 
@@ -53,7 +53,7 @@ public record Schedule(ScheduleId id, WorkingHours workingHours, List<TimeSchedu
            }
         }
 
-        public boolean isInWorkingHours(TimeSchedule timeSlot) {
+        public boolean isInWorkingHours(TimeSlot timeSlot) {
             return !timeSlot.startTime().isBefore(startTime()) && !timeSlot.endTime().isAfter(endTime());
         }
     }
@@ -62,8 +62,8 @@ public record Schedule(ScheduleId id, WorkingHours workingHours, List<TimeSchedu
      * @param startTime inclusive
      * @param endTime exclusive
      */
-    public record TimeSchedule(LocalTime startTime, LocalTime endTime, String appointmentId) {
-        public TimeSchedule {
+    public record TimeSlot(LocalTime startTime, LocalTime endTime, String appointmentId) {
+        public TimeSlot {
             if (startTime.isAfter(endTime)) {
                 throw new IllegalArgumentException("Start time must be before end time");
             }
@@ -72,13 +72,13 @@ public record Schedule(ScheduleId id, WorkingHours workingHours, List<TimeSchedu
             }
         }
 
-        public boolean overlaps(TimeSchedule other) {
+        public boolean overlaps(TimeSlot other) {
             return other.startTime().isBefore(endTime()) && other.endTime().isAfter(startTime());
         }
     }
 
     public Schedule scheduleAppointment(LocalTime startTime, Duration duration, String appointmentId) {
-        var newTimeSlot = new TimeSchedule(startTime, startTime.plus(duration), appointmentId);
+        var newTimeSlot = new TimeSlot(startTime, startTime.plus(duration), appointmentId);
         var newSlots = new ArrayList<>(timeSlots); //copy original slots
         newSlots.add(newTimeSlot); //add a new time slot to the copy
         return new Schedule(id, workingHours, Collections.unmodifiableList(newSlots));
