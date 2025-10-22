@@ -4,37 +4,38 @@ import akka.Done;
 import akka.javasdk.annotations.Component;
 import akka.javasdk.client.ComponentClient;
 import akka.javasdk.workflow.Workflow;
+import com.clinic.domain.ScheduleAppointmentState;
 import com.clinic.domain.Schedule;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Component(id = "schedule-appointment")
-public class RegisterAppointmentWorkflow extends Workflow<RegisterAppointmentState> {
+public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentState> {
 
     private static final Duration DEFAULT_DURATION = Duration.ofMinutes(30);
 
     private final ComponentClient componentClient;
 
-    public RegisterAppointmentWorkflow(ComponentClient componentClient) {
+    public ScheduleAppointmentWorkflow(ComponentClient componentClient) {
         this.componentClient = componentClient;
     }
 
-    public record RegisterAppointmentCommand(LocalDateTime dateTime, String doctorId, String patientId, String issue) {}
+    public record ScheduleAppointmentCommand(LocalDateTime dateTime, String doctorId, String patientId, String issue) {}
 
-    public Effect<Done> startRegistration(RegisterAppointmentCommand cmd) {
-        System.out.println("## startRegistration");
+    public Effect<Done> schedule(ScheduleAppointmentCommand cmd) {
+        System.out.println("## schedule");
         if (currentState() != null)
             return effects().error("Appointment already exists");
 
-        var state = new RegisterAppointmentState(cmd.dateTime, cmd.doctorId, cmd.patientId, cmd.issue);
+        var state = new ScheduleAppointmentState(cmd.dateTime, cmd.doctorId, cmd.patientId, cmd.issue);
         return effects()
                 .updateState(state)
-                .transitionTo(RegisterAppointmentWorkflow::createAppointment)
+                .transitionTo(ScheduleAppointmentWorkflow::createAppointment)
                 .thenReply(Done.getInstance());
     }
 
-    public Effect<RegisterAppointmentState> getState() {
+    public Effect<ScheduleAppointmentState> getState() {
         return effects().reply(currentState());
     }
 
@@ -46,7 +47,7 @@ public class RegisterAppointmentWorkflow extends Workflow<RegisterAppointmentSta
                 .invoke(new AppointmentEntity.CreateAppointmentCmd(currentState().dateTime(), currentState().doctorId(), currentState().patientId(), currentState().issue()));
 
         return stepEffects()
-                .thenTransitionTo(RegisterAppointmentWorkflow::scheduleTimeSlot);
+                .thenTransitionTo(ScheduleAppointmentWorkflow::scheduleTimeSlot);
     }
 
     public StepEffect scheduleTimeSlot() {
@@ -58,11 +59,11 @@ public class RegisterAppointmentWorkflow extends Workflow<RegisterAppointmentSta
                     .method(ScheduleEntity::scheduleAppointment)
                     .invoke(new ScheduleEntity.ScheduleAppointmentData(currentState().dateTime().toLocalTime(), DEFAULT_DURATION, commandContext().workflowId()));
         } catch (Exception e) {
-            return stepEffects().thenTransitionTo(RegisterAppointmentWorkflow::cancelAppointment);
+            return stepEffects().thenTransitionTo(ScheduleAppointmentWorkflow::cancelAppointment);
         }
 
         return stepEffects()
-                .thenTransitionTo(RegisterAppointmentWorkflow::markAppointmentAsScheduled);
+                .thenTransitionTo(ScheduleAppointmentWorkflow::markAppointmentAsScheduled);
     }
 
     public StepEffect markAppointmentAsScheduled() {

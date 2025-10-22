@@ -9,12 +9,9 @@ import akka.javasdk.client.ComponentClient;
 import akka.javasdk.http.AbstractHttpEndpoint;
 import akka.javasdk.http.HttpException;
 import com.clinic.application.AppointmentEntity;
-import com.clinic.application.RegisterAppointmentWorkflow;
-import com.clinic.application.ScheduleEntity;
+import com.clinic.application.ScheduleAppointmentWorkflow;
 import com.clinic.domain.Appointment;
-import com.clinic.domain.Schedule;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -46,8 +43,8 @@ public class AppointmentEndpoint extends AbstractHttpEndpoint {
         var appointmentId = UUID.randomUUID().toString();
         componentClient
                 .forWorkflow(appointmentId)
-                .method(RegisterAppointmentWorkflow::startRegistration)
-                .invoke(new RegisterAppointmentWorkflow.RegisterAppointmentCommand(date.atTime(parseTime(body.startTime)), body.doctorId, body.patientId, body.issue));
+                .method(ScheduleAppointmentWorkflow::schedule)
+                .invoke(new ScheduleAppointmentWorkflow.ScheduleAppointmentCommand(date.atTime(parseTime(body.startTime)), body.doctorId, body.patientId, body.issue));
 
         return new CreateAppointmentResponse(appointmentId);
     }

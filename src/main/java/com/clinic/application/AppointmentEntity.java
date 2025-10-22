@@ -37,6 +37,8 @@ public class AppointmentEntity extends EventSourcedEntity<Appointment, Appointme
     public Effect<Done> reschedule(RescheduleCmd cmd) {
         if (currentState() == null)
             return effects().error("Appointment doesn't exist");
+        if (currentState().status() != Appointment.Status.PENDING && currentState().status() != Appointment.Status.SCHEDULED)
+            return effects().error("Cannot reschedule an appointment that is not pending or scheduled");
         return effects()
                 .persist(new AppointmentEvents.Rescheduled(cmd.newDateTime, cmd.doctorId))
                 .thenReply(__ -> Done.getInstance());
@@ -61,6 +63,8 @@ public class AppointmentEntity extends EventSourcedEntity<Appointment, Appointme
     public Effect<Done> schedule() {
         if (currentState() == null)
             return effects().error("Appointment doesn't exist");
+        if (currentState().status() != Appointment.Status.PENDING)
+            return effects().error("Cannot schedule an appointment that is not pending");
         return effects()
                 .persist(new AppointmentEvents.Scheduled())
                 .thenReply(__ -> Done.getInstance());
@@ -79,6 +83,8 @@ public class AppointmentEntity extends EventSourcedEntity<Appointment, Appointme
     public Effect<Done> cancel() {
         if (currentState() == null)
             return effects().error("Appointment doesn't exist");
+        if (currentState().status() != Appointment.Status.PENDING && currentState().status() != Appointment.Status.SCHEDULED)
+            return effects().error("Cannot cancel an appointment that is not pending or scheduled");
         return effects()
                 .persist(new AppointmentEvents.Cancelled())
                 .thenReply(__ -> Done.getInstance());
@@ -87,6 +93,8 @@ public class AppointmentEntity extends EventSourcedEntity<Appointment, Appointme
     public Effect<Done> markAsMissed() {
         if (currentState() == null)
             return effects().error("Appointment doesn't exist");
+        if (currentState().status() != Appointment.Status.PENDING && currentState().status() != Appointment.Status.SCHEDULED)
+            return effects().error("Cannot mark an appointment as missed that is not pending or scheduled");
         return effects()
                 .persist(new AppointmentEvents.Missed())
                 .thenReply(__ -> Done.getInstance());
