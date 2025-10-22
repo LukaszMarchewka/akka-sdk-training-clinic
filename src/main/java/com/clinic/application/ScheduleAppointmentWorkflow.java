@@ -58,7 +58,7 @@ public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentSta
                     .forKeyValueEntity(scheduleId.toString())
                     .method(ScheduleEntity::scheduleAppointment)
                     .invoke(new ScheduleEntity.ScheduleAppointmentData(currentState().dateTime().toLocalTime(), DEFAULT_DURATION, commandContext().workflowId()));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             return stepEffects().thenTransitionTo(ScheduleAppointmentWorkflow::cancelAppointment);
         }
 
@@ -84,5 +84,14 @@ public class ScheduleAppointmentWorkflow extends Workflow<ScheduleAppointmentSta
                 .invoke();
 
         return stepEffects().thenEnd();
+    }
+
+    @Override
+    public WorkflowSettings settings() {
+        return WorkflowSettingsBuilder
+                .newBuilder()
+                .stepTimeout(ScheduleAppointmentWorkflow::scheduleTimeSlot, Duration.ofSeconds(40))
+                .defaultStepRecovery(RecoverStrategy.maxRetries(2).failoverTo(ScheduleAppointmentWorkflow::cancelAppointment))
+                .build();
     }
 }
