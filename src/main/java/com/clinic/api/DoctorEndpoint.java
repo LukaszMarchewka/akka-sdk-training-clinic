@@ -1,6 +1,5 @@
 package com.clinic.api;
 
-import akka.http.javadsl.model.StatusCodes;
 import akka.javasdk.annotations.Acl;
 import akka.javasdk.annotations.http.Get;
 import akka.javasdk.annotations.http.HttpEndpoint;
@@ -8,7 +7,10 @@ import akka.javasdk.annotations.http.Post;
 import akka.javasdk.client.ComponentClient;
 import akka.javasdk.http.AbstractHttpEndpoint;
 import akka.javasdk.http.HttpException;
+import com.clinic.application.DoctorEntity;
+import com.clinic.application.DoctorsView;
 import com.clinic.application.SchedulesByDoctorView;
+import com.clinic.domain.Doctor;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,10 +39,10 @@ public class DoctorEndpoint extends AbstractHttpEndpoint {
 
     @Post("{id}")
     public void createDoctor(String id, CreateDoctorRequest body) {
-        if (id.equals("house")) {
-            throw HttpException.error(StatusCodes.CONFLICT, "Doctor already exists");
-        }
-        System.out.println("Received doctor: " + body);
+        var doctor = new Doctor(id, body.firstName, body.lastName, body.specialities, body.description, body.contact.map(c -> new Doctor.Contact(c.phone, c.email)));
+        componentClient.forKeyValueEntity(id)
+                .method(DoctorEntity::create)
+                .invoke(doctor);
     }
 
     public record DoctorSummary(String id, String name, List<String> specialities) {
@@ -48,7 +50,17 @@ public class DoctorEndpoint extends AbstractHttpEndpoint {
 
     @Get
     public List<DoctorSummary> getDoctors() {
-        return List.of(new DoctorSummary("house", "Gregory House", List.of("Cardiologist", "Nephrology")));
+        Optional<String> optionalSpeciality = requestContext().queryParams().getString("speciality");
+
+        var doctors = optionalSpeciality.map(speciality ->
+                componentClient.forView().method(DoctorsView::findBySpeciality).invoke(speciality)
+        ).orElseGet(() ->
+                componentClient.forView().method(DoctorsView::getDoctors).invoke()
+        );
+
+        return doctors.doctors()
+                .stream().map(doctor -> new DoctorSummary(doctor.id(), doctor.firstName() + " " + doctor.lastName(), doctor.specialities()))
+                .toList();
     }
 
     public record DoctorDetails(
@@ -63,12 +75,13 @@ public class DoctorEndpoint extends AbstractHttpEndpoint {
 
     @Get("{id}")
     public DoctorDetails getDoctor(String id) {
-        if (id.equals("house")) {
-            Contact contact = new Contact(Optional.of("+1 234 567 8901"), Optional.empty());
-            return new DoctorDetails(id, "Gregory", "House", List.of("Cardiologist", "Nephrology"), "Doctor of Cardiology", Optional.of(contact));
-        } else {
-            throw HttpException.notFound();
-        }
+        var optionalDoctor = componentClient
+                .forKeyValueEntity(id)
+                .method(DoctorEntity::getDoctor)
+                .invoke();
+        return optionalDoctor.map(doctor ->
+            new DoctorDetails(id, doctor.firstName(), doctor.lastName(), doctor.specialities(), doctor.description(), doctor.contact().map(c -> new Contact(c.phone(), c.email())))
+        ).orElseThrow(HttpException::notFound);
     }
 
     @Get("{doctorId}/schedules")
